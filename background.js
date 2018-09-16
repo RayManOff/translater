@@ -1,22 +1,55 @@
-chrome.runtime.onMessage.addListener(
-    function(request, sender, sendResponse) {
-        console.log(sender.tab ?
-            "from a content script:" + sender.tab.url :
-            "from the extension");
+const URL = 'http://localhost:8080';
 
-        let response = {
-            'status' : 'ok',
-            'result' : ''
-        };
+chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+  if (message['request'] === 'dialogContents') {
+      getDialogsContent(sendResponse)
+  } else if (message['request']  === 'translate') {
+      translate(message['params'] , sendResponse);
+  } else {
+      sendResponse({error : 'Unknown request' + message.request});
+  }
 
-        if (typeof request.text === 'undefined' || request.text === 0) {
-            response.status = "error";
-            response.result = "There is not text";
-        } else {
-            response.result = "Translate of " + request.text;
-        }
+  return true;
+});
 
-        sendResponse(response);
+function getDialogsContent(handler) {
+  let request = new Request('GET', URL + '/dialogContents');
+  request.onload(handler);
+  request.send();
+}
+
+function translate(params, handler) {
+  let message = JSON.stringify({
+    text: params['text'],
+    left: params['left'],
+    top: params['top']
+  });
+
+  let request = new Request('POST', URL + '/translate', message);
+  request.setHeader('Content-type', 'application/json; charset=utf-8');
+  request.onload(handler);
+  request.send();
+}
+
+function Request(method, url, params = {}) {
+  this.xht = new XMLHttpRequest();
+  this.xht.open(method, url, true);
+  this.params = params;
+
+  let _this = this;
+
+  this.onload = function (callback) {
+    _this.xht.onload = function () {
+      callback(JSON.parse(_this.xht.responseText));
     }
-);
+  };
+
+  this.setHeader = function (header, value) {
+    _this.xht.setRequestHeader(header, value);
+  };
+
+  this.send = function () {
+    _this.xht.send(this.params);
+  }
+}
 
