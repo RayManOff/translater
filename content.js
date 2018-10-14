@@ -2,7 +2,7 @@ const MODE_SELECT = 'select';
 const MODE_TRANSLATE = 'translate';
 
 function Dialog() {
-  this.text = '';
+  this.selected = null;
 
   this.left = null;
   this.top = null;
@@ -10,46 +10,46 @@ function Dialog() {
   this.mode = MODE_SELECT;
 
   this.dialogs = {};
-  this.dialogContens = {};
+  this.iconParams = null;
 
   let _this = this;
 
   this.init = function () {
     document.addEventListener('mouseup', (event) => {
       if (_this.mode === MODE_TRANSLATE) {
+        _this.translate();
+
         return;
       }
 
-      let text = _this.getSelectedText();
-      if (text === '' || text === undefined) {
-        console.log('There is no selected text');
+      let selected = _this.getSelected();
+      if (selected === false) {
         return;
       }
 
-      _this.text = text;
-      _this.left = event.pageX;
-      _this.top = event.pageY + 5;
+      _this.text = selected.text;
+      _this.left = selected.coordinate.x;
+      _this.top = selected.coordinate.y;
 
       _this.showIcon();
       _this.mode = MODE_TRANSLATE;
     });
 
-    _this.getDialogContents();
+    _this.getIcon();
   };
 
-  this.getDialogContents = function () {
-    let message = {request: "dialogContents",};
+  this.getIcon = function () {
+    let message = {
+      request: 'getIcon'
+    };
+
     chrome.runtime.sendMessage(message, function (response) {
-      if (response.status === false || response.dialogs === undefined) {
-        console.log('Cannot get dialog contents');
+      if (response.status === false) {
+        console.log('Cannot get icon');
         return;
       }
 
-      for (let dialogType in response.dialogs) {
-        if (response.dialogs.hasOwnProperty(dialogType)) {
-          _this.dialogContens[dialogType] = response.dialogs[dialogType];
-        }
-      }
+      _this.iconParams = response.icon;
     });
   };
 
@@ -61,43 +61,40 @@ function Dialog() {
       }
     };
 
+    console.log(message);
+
     chrome.runtime.sendMessage(message, function (response) {
       if (response['status'] === false) {
         console.log(response);
         return
       }
 
-      _this.showTranslate(response['data'])
+      _this.showTranslate(response['popup'])
     });
   };
 
-  this.showTranslate = function (params) {
-    let popupParams = _this.dialogContens['popup'];
-    if (popupParams === undefined) {
+  this.showTranslate = function (popup) {
+    if (popup === undefined) {
       console.log('There are no popup dialog params');
       return;
     }
 
-    popupParams.attributes.style['left'] = _this.left + 'px';
-    popupParams.attributes.style['top'] = _this.top + 'px';
-
-    _this.popup = createElement(popupParams);
-    _this.popup.innerHTML = params.content;
-
-    document.body.appendChild(_this.popup);
+    document.body.innerHTML += popup;
+    popup = document.getElementsByClassName('rayman_translate_popup');
+    popup.style = {left: _this.left + 'px', right: _this.right + 'px'};
+    console.log(popup.style);
   };
 
   this.showIcon = function () {
-    let iconParams = _this.dialogContens['icon'];
-    if (iconParams === undefined) {
+    if (_this.iconParams === null) {
       console.log('There are no icon dialog params');
       return;
     }
 
-    iconParams.attributes.style['left'] = _this.left + 'px';
-    iconParams.attributes.style['top'] = _this.top + 'px';
+    _this.iconParams.attributes.style['left'] = _this.left + 'px';
+    _this.iconParams.attributes.style['top'] = _this.top + 'px';
 
-    _this.dialogs['icon'] = createElement(iconParams);
+    _this.dialogs['icon'] = createElement(_this.iconParams);
     _this.dialogs['icon'].onclick = function () {
       _this.dialogs['icon'].remove();
       _this.translate(_this.text);
@@ -107,8 +104,24 @@ function Dialog() {
     document.body.appendChild(_this.dialogs['icon']);
   };
 
-  this.getSelectedText = function () {
-    return window.getSelection().toString();
+  this.getSelected = function () {
+    let selected = window.getSelection();
+    let text = selected.toString();
+    if (selected.rangeCount !== 1 || text === '') {
+      return false;
+    }
+
+    let range = selected.getRangeAt(0).cloneRange();
+    range.collapse(true);
+    let rects = range.getClientRects();
+
+    return {
+      text: selected.toString(),
+      coordinate: {
+        x: rects[0].left,
+        y: rects[0].top
+      }
+    };
   };
 }
 

@@ -1,10 +1,10 @@
-const URL = 'http://localhost:8080';
+const URL = 'http://localhost:8000';
 
 chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
-  if (message['request'] === 'dialogContents') {
-      getDialogsContent(sendResponse)
+  if (message['request'] === 'getIcon') {
+      getIcon(sendResponse)
   } else if (message['request']  === 'translate') {
-      translate(message['params'] , sendResponse);
+      translate(message['params']['text'] , sendResponse);
   } else {
       sendResponse({error : 'Unknown request' + message.request});
   }
@@ -12,21 +12,22 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   return true;
 });
 
-function getDialogsContent(handler) {
-  let request = new Request('GET', URL + '/dialogContents');
+function getIcon(handler) {
+  let request = new Request('GET', URL + '/getIcon');
   request.onload(handler);
   request.send();
 }
 
-function translate(params, handler) {
-  let message = JSON.stringify({
-    text: params['text'],
-    left: params['left'],
-    top: params['top']
-  });
+function translate(text, handler) {
+  let params = [
+    'text=' + text,
+    'need_popup=1'
+  ];
 
-  let request = new Request('POST', URL + '/translate', message);
-  request.setHeader('Content-type', 'application/json; charset=utf-8');
+  let path = '/translate?' + params.join('&');
+  console.log(path);
+  let request = new Request('GET', URL + path);
+
   request.onload(handler);
   request.send();
 }
@@ -40,6 +41,7 @@ function Request(method, url, params = {}) {
 
   this.onload = function (callback) {
     _this.xht.onload = function () {
+      console.log(_this.xht.responseText);
       callback(JSON.parse(_this.xht.responseText));
     }
   };
