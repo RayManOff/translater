@@ -6,7 +6,8 @@
   "permissions": [],
   "background" : {
     "scripts" : [
-      "background.js"
+      "background/message.js",
+      "background/background.js"
     ],
     "persistent" : false
   },
