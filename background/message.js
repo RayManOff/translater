@@ -1,5 +1,5 @@
 class MessageServer {
-  constructor () {
+  constructor() {
     chrome.runtime.onMessage.addListener((request, sender, respond) => {
       console.log(request);
       (async () => {
@@ -11,6 +11,17 @@ class MessageServer {
       })();
 
       return true;
+    });
+  }
+}
+
+class MessageClient {
+  static request(command, args) {
+    console.log(args);
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({ command: command, params: Array.from(args) }, result => {
+        resolve(result);
+      });
     });
   }
 }

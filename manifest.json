@@ -15,7 +15,8 @@
     {
       "matches": ["<all_urls>"],
       "js": [
-        "content.js"
+        "background/message.js",
+        "content/content.js"
       ]
     }
   ]

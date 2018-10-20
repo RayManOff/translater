@@ -1,3 +1,13 @@
+class BackgroundClient extends MessageClient {
+  static translate(text) {
+    return this.request('translate', text);
+  }
+
+  static getIcon() {
+    return this.request('getIcon', '');
+  }
+}
+
 const MODE_SELECT = 'select';
 const MODE_TRANSLATE = 'translate';
 
@@ -38,39 +48,20 @@ function Dialog() {
     _this.getIcon();
   };
 
-  this.getIcon = function () {
-    let message = {
-      request: 'getIcon'
-    };
+  this.getIcon = async function () {
+    const response = await BackgroundClient.getIcon();
+    if (response.status === false) {
+      console.log('Cannot get icon');
+      return;
+    }
 
-    chrome.runtime.sendMessage(message, function (response) {
-      if (response.status === false) {
-        console.log('Cannot get icon');
-        return;
-      }
-
-      _this.iconParams = response.icon;
-    });
+    _this.iconParams = response.icon;
   };
 
-  this.translate = function () {
-    let message = {
-      request: "translate",
-      params: {
-        text: _this.text,
-      }
-    };
+  this.translate = async function () {
+     const response = await BackgroundClient.translate(_this.text);
 
-    console.log(message);
-
-    chrome.runtime.sendMessage(message, function (response) {
-      if (response['status'] === false) {
-        console.log(response);
-        return
-      }
-
-      _this.showTranslate(response['popup'])
-    });
+     _this.showTranslate(response.popup)
   };
 
   this.showTranslate = function (popup) {
