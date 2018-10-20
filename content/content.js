@@ -8,94 +8,29 @@ class BackgroundClient extends MessageClient {
   }
 }
 
-const MODE_SELECT = 'select';
-const MODE_TRANSLATE = 'translate';
+MODE_SELECT = 'select';
+MODE_TRASLATE = 'translate';
 
-function Dialog() {
-  this.selected = null;
+class Dialog {
+  constructor() {
+    this.currentMode = MODE_SELECT;
+  }
 
-  this.left = null;
-  this.top = null;
-
-  this.mode = MODE_SELECT;
-
-  this.dialogs = {};
-  this.iconParams = null;
-
-  let _this = this;
-
-  this.init = function () {
-    document.addEventListener('mouseup', (event) => {
-      if (_this.mode === MODE_TRANSLATE) {
-        _this.translate();
-
+  init() {
+    let _this = this;
+    document.addEventListener('mouseup', event => {
+      if (_this.currentMode === MODE_TRASLATE) {
         return;
       }
-
-      let selected = _this.getSelected();
-      if (selected === false) {
-        return;
+      if (_this.retrieveSelected()) {
+        _this.showIcon();
       }
-
-      _this.text = selected.text;
-      _this.left = selected.coordinate.x;
-      _this.top = selected.coordinate.y;
-
-      _this.showIcon();
-      _this.mode = MODE_TRANSLATE;
     });
 
-    _this.getIcon();
-  };
+    this.loadIconParams();
+  }
 
-  this.getIcon = async function () {
-    const response = await BackgroundClient.getIcon();
-    if (response.status === false) {
-      console.log('Cannot get icon');
-      return;
-    }
-
-    _this.iconParams = response.icon;
-  };
-
-  this.translate = async function () {
-     const response = await BackgroundClient.translate(_this.text);
-
-     _this.showTranslate(response.popup)
-  };
-
-  this.showTranslate = function (popup) {
-    if (popup === undefined) {
-      console.log('There are no popup dialog params');
-      return;
-    }
-
-    document.body.innerHTML += popup;
-    popup = document.getElementsByClassName('rayman_translate_popup');
-    popup.style = {left: _this.left + 'px', right: _this.right + 'px'};
-    console.log(popup.style);
-  };
-
-  this.showIcon = function () {
-    if (_this.iconParams === null) {
-      console.log('There are no icon dialog params');
-      return;
-    }
-
-    _this.iconParams.attributes.style['left'] = _this.left + 'px';
-    _this.iconParams.attributes.style['top'] = _this.top + 'px';
-
-    _this.dialogs['icon'] = createElement(_this.iconParams);
-    _this.dialogs['icon'].onclick = function () {
-      _this.dialogs['icon'].remove();
-      _this.translate(_this.text);
-      _this.mode = MODE_SELECT;
-    };
-
-    document.body.appendChild(_this.dialogs['icon']);
-  };
-
-  this.getSelected = function () {
+  retrieveSelected() {
     let selected = window.getSelection();
     let text = selected.toString();
     if (selected.rangeCount !== 1 || text === '') {
@@ -106,39 +41,78 @@ function Dialog() {
     range.collapse(true);
     let rects = range.getClientRects();
 
-    return {
+    this.selected = {
       text: selected.toString(),
       coordinate: {
         x: rects[0].left,
         y: rects[0].top
       }
     };
-  };
-}
 
-function createElement(params) {
-  let element = document.createElement(params.tag);
-  let attributes = params.attributes;
-  for (let attrName in attributes) {
-    let value = '';
-    if (typeof attributes[attrName] === 'object') {
-      for (let key in attributes[attrName]) {
-        if (attributes[attrName].hasOwnProperty(key)) {
-          value += key + ': ' + attributes[attrName][key] + '; ';
-        }
-      }
-    } else {
-      value = attributes[attrName];
+    return true;
+  }
+
+  async loadIconParams() {
+    const response = await BackgroundClient.getIcon();
+    if (response.status === false) {
+      throw new Error('Cannot load icon params');
     }
-    element.setAttribute(attrName, value);
+
+    this.iconParams = response.icon;
   }
 
-  if (params.content !== undefined) {
-    element.innerHTML = params.content;
+  showIcon() {
+    if (this.iconParams === undefined) {
+      console.log('There are no icon dialog params');
+      return;
+    }
+
+    this.iconParams.attributes.style['left'] = 10 + 'px';
+    this.iconParams.attributes.style['top'] = 10 + 'px';
+
+    this.icon = this.createElement(this.iconParams);
+    let _this = this;
+    this.icon.onclick = function () {
+      _this.icon.remove();
+      _this.translate(_this.selected.text);
+      _this.currentMode = MODE_SELECT;
+    };
+
+    document.body.appendChild(this.icon);
   }
 
-  return element;
+  async translate(text) {
+    const response = await BackgroundClient.translate(text);
+    console.log(response);
+  }
+
+  createElement(params) {
+    let element = document.createElement(params.tag);
+    let attributes = params.attributes;
+    for (let attrName in attributes) {
+      let value = '';
+      if (typeof attributes[attrName] === 'object') {
+        for (let key in attributes[attrName]) {
+          if (attributes[attrName].hasOwnProperty(key)) {
+            value += key + ': ' + attributes[attrName][key] + '; ';
+          }
+        }
+      } else {
+        value = attributes[attrName];
+      }
+
+      element.setAttribute(attrName, value);
+    }
+
+    if (params.content !== undefined) {
+      element.innerHTML = params.content;
+    }
+
+    return element;
+  }
 }
 
-let dialog = new Dialog();
-window.onload = dialog.init;
+window.onload = () => {
+  let dialog = new Dialog();
+  dialog.init();
+};

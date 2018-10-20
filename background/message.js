@@ -17,7 +17,6 @@ class MessageServer {
 
 class MessageClient {
   static request(command, args) {
-    console.log(args);
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({ command: command, params: Array.from(args) }, result => {
         resolve(result);
