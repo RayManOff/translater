@@ -1,8 +1,8 @@
-const URL = 'http://localhost:8000';
+const BASE_URL = 'http://localhost:8000';
 
 class BackgroundServer extends MessageServer {
   async getIcon() {
-    let response = await fetch(URL + '/getIcon');
+    let response = await fetch(BASE_URL + '/getIcon');
     return await response.json();
   }
 
@@ -13,10 +13,9 @@ class BackgroundServer extends MessageServer {
     ];
 
     const path = '/translate?' + params.join('&');
-    let response = await fetch(URL + path);
+    let response = await fetch(BASE_URL + path);
     return await response.json();
   }
 }
 
-let server = new BackgroundServer();
-
+new BackgroundServer();

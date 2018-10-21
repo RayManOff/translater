@@ -8,22 +8,46 @@ class BackgroundClient extends MessageClient {
   }
 }
 
-MODE_SELECT = 'select';
-MODE_TRASLATE = 'translate';
+MODE_SELECTING = 'selecting';
+MODE_SELECTED = 'selected';
+MODE_TRASLATED = 'translated';
 
 class Dialog {
   constructor() {
-    this.currentMode = MODE_SELECT;
+    this.currentMode = MODE_SELECTING;
+    this.iconParams = null;
+    this.iconElement = null;
+    this.popupElement = null;
   }
 
   init() {
     let _this = this;
     document.addEventListener('mouseup', event => {
-      if (_this.currentMode === MODE_TRASLATE) {
+      console.log(_this.currentMode);
+      if (_this.currentMode === MODE_TRASLATED) {
+        if (_this.popupElement !== null) {
+          _this.popupElement.remove();
+          _this.popupElement = null;
+        }
+
+        _this.currentMode = MODE_SELECTING;
+
         return;
       }
+
+      if (_this.currentMode === MODE_SELECTED) {
+        return;
+      }
+
       if (_this.retrieveSelected()) {
         _this.showIcon();
+        _this.currentMode = MODE_SELECTED;
+      } else {
+        if (_this.iconElement !== null) {
+          _this.iconElement.remove();
+          _this.iconElement = null;
+        }
+        _this.currentMode = MODE_SELECTING;
       }
     });
 
@@ -54,7 +78,7 @@ class Dialog {
 
   async loadIconParams() {
     const response = await BackgroundClient.getIcon();
-    if (response.status === false) {
+    if (response.success === false) {
       throw new Error('Cannot load icon params');
     }
 
@@ -62,7 +86,7 @@ class Dialog {
   }
 
   showIcon() {
-    if (this.iconParams === undefined) {
+    if (!this.iconParams) {
       console.log('There are no icon dialog params');
       return;
     }
@@ -70,20 +94,40 @@ class Dialog {
     this.iconParams.attributes.style['left'] = 10 + 'px';
     this.iconParams.attributes.style['top'] = 10 + 'px';
 
-    this.icon = this.createElement(this.iconParams);
+    this.iconElement = this.createElement(this.iconParams);
     let _this = this;
-    this.icon.onclick = function () {
-      _this.icon.remove();
+    this.iconElement.onclick = () => {
+      console.log('Translating');
+      _this.iconElement.remove();
+      _this.iconElement = null;
       _this.translate(_this.selected.text);
-      _this.currentMode = MODE_SELECT;
+      _this.currentMode = MODE_TRASLATED;
     };
 
-    document.body.appendChild(this.icon);
+    document.body.appendChild(this.iconElement);
   }
 
   async translate(text) {
     const response = await BackgroundClient.translate(text);
-    console.log(response);
+    if (response.success === false) {
+      throw new Error('Cannot translate');
+    }
+
+    let _this = this;
+    this.popupElement = this.createElementFromHTML(response.popup);
+    document.body.appendChild(this.popupElement);
+    document.getElementById('close_translate_popup').onclick = () => {
+      _this.popupElement.remove();
+      _this.popupElement = null;
+      _this.currentMode = MODE_SELECTING;
+    };
+  }
+
+  createElementFromHTML(htmlString) {
+    let div = document.createElement('div');
+    div.innerHTML = htmlString.trim();
+
+    return div.firstChild;
   }
 
   createElement(params) {
